@@ -4,3 +4,6 @@ zig-out/
 *.o
 *.a
 *.d
+
+.env*
+!.env.example
