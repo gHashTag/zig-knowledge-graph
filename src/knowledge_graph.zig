@@ -456,28 +456,28 @@ pub const KnowledgeGraph = struct {
             return error.InvalidFileFormat;
         }
 
-        const version = try reader.readInt(u32, .little);
+        const version = try reader.takeInt(u32, .little);
         if (version != FILE_VERSION) {
             return error.UnsupportedVersion;
         }
 
-        const entity_count = try reader.readInt(u32, .little);
-        const relation_count = try reader.readInt(u32, .little);
+        const entity_count = try reader.takeInt(u32, .little);
+        const relation_count = try reader.takeInt(u32, .little);
 
         // withby buffer for and
         var name_offset: usize = 0;
 
         // Entities
         for (0..entity_count) |i| {
-            const name_len = try reader.readInt(u16, .little);
+            const name_len = try reader.takeInt(u16, .little);
 
             // and and in buffer
             const name_start = name_offset;
             try reader.readSliceAll(name_buffer[name_offset .. name_offset + name_len]);
             name_offset += name_len;
 
-            const id = try reader.readInt(u32, .little);
-            const trit_len = try reader.readInt(u32, .little);
+            const id = try reader.takeInt(u32, .little);
+            const trit_len = try reader.takeInt(u32, .little);
             const packed_len = (trit_len + 4) / 5;
 
             var vec = PackedBigInt.zero();
@@ -494,14 +494,14 @@ pub const KnowledgeGraph = struct {
 
         // Relations
         for (0..relation_count) |i| {
-            const name_len = try reader.readInt(u16, .little);
+            const name_len = try reader.takeInt(u16, .little);
 
             const name_start = name_offset;
             try reader.readSliceAll(name_buffer[name_offset .. name_offset + name_len]);
             name_offset += name_len;
 
-            const id = try reader.readInt(u32, .little);
-            const trit_len = try reader.readInt(u32, .little);
+            const id = try reader.takeInt(u32, .little);
+            const trit_len = try reader.takeInt(u32, .little);
             const packed_len = (trit_len + 4) / 5;
 
             var vec = PackedBigInt.zero();
@@ -517,12 +517,12 @@ pub const KnowledgeGraph = struct {
         }
 
         // Triples
-        const triple_count = try reader.readInt(u32, .little);
+        const triple_count = try reader.takeInt(u32, .little);
         for (0..triple_count) |i| {
-            const subject_id = try reader.readInt(u32, .little);
-            const predicate_id = try reader.readInt(u32, .little);
-            const object_id = try reader.readInt(u32, .little);
-            const trit_len = try reader.readInt(u32, .little);
+            const subject_id = try reader.takeInt(u32, .little);
+            const predicate_id = try reader.takeInt(u32, .little);
+            const object_id = try reader.takeInt(u32, .little);
+            const trit_len = try reader.takeInt(u32, .little);
             const packed_len = (trit_len + 4) / 5;
 
             var vec = PackedBigInt.zero();
@@ -539,7 +539,7 @@ pub const KnowledgeGraph = struct {
         }
 
         // Graph vector
-        const graph_trit_len = try reader.readInt(u32, .little);
+        const graph_trit_len = try reader.takeInt(u32, .little);
         const graph_packed_len = (graph_trit_len + 4) / 5;
         result.graph_vector.trit_len = graph_trit_len;
         try reader.readSliceAll(result.graph_vector.data[0..graph_packed_len]);
