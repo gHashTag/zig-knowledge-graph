@@ -7,3 +7,6 @@ zig-out/
 
 .env*
 !.env.example
+.zig-cache/
+zig-out/
+zig-pkg/

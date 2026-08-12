@@ -1,0 +1,32 @@
+# This repository had no build.zig and no workflow. Three source files, fifteen
+# test blocks, and a manifest that declared a dependency by URL with no hash —
+# so nothing could fetch it, nothing could build it, and nobody could depend on
+# it. The four imports in knowledge_graph.zig pointed at sibling files that live
+# in gHashTag/zig-golden-float, whose own packed_vsa.zig imported
+# "knowledge_graph.zig" right back. Neither half compiled.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          # The version this package targets. Local 0.16 reports failures that
+          # do not exist here (std.io.getStdOut, ArrayList.init, std.fs) and
+          # would hide at least one that does.
+          version: 0.15.2
+
+      - name: zig build
+        run: zig build
+
+      - name: zig build test
+        run: zig build test --summary all

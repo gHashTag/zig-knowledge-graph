@@ -11,10 +11,17 @@
 // φ² + 1/φ² = 3
 
 const std = @import("std");
-const vsa = @import("vsa.zig");
-const hybrid = @import("hybrid.zig");
-const packed_vsa = @import("packed_vsa.zig");
-const packed_trit = @import("packed_trit.zig");
+// These four were flat relative imports of files that are not in this
+// repository. They are in gHashTag/zig-golden-float, whose own
+// src/vsa/packed_vsa.zig imported "knowledge_graph.zig" — a file that is not
+// in THAT repository, but is right here. One directory was split into two and
+// every relative import was left pointing at the sibling that stayed behind,
+// so neither half compiled. Pointed at the dependency instead.
+const golden = @import("zig_golden_float");
+const vsa = golden.vsa;
+const hybrid = golden.bigint;
+const packed_vsa = golden.packed_vsa;
+const packed_trit = golden.packed_trit;
 
 const HybridBigInt = hybrid.HybridBigInt;
 const PackedBigInt = packed_trit.PackedBigInt;
@@ -364,7 +371,11 @@ pub const KnowledgeGraph = struct {
         const file = try std.fs.cwd().createFile(path, .{});
         defer file.close();
 
-        var writer = file.writer();
+        // Since 0.15 File.writer takes a buffer and returns a File.Writer;
+        // the thing with writeAll/writeInt on it is its .interface.
+        var write_buf: [4096]u8 = undefined;
+        var file_writer = file.writer(&write_buf);
+        const writer = &file_writer.interface;
 
         // Header
         try writer.writeAll(&FILE_MAGIC);
@@ -422,6 +433,10 @@ pub const KnowledgeGraph = struct {
         try writer.writeInt(u32, graph_trit_len, .little);
         const graph_packed_len = (self.graph_vector.trit_len + 4) / 5;
         try writer.writeAll(self.graph_vector.data[0..graph_packed_len]);
+
+        // The writer is buffered now. Without this the tail of the graph never
+        // reaches disk and load() fails on a file that save() reported writing.
+        try file_writer.interface.flush();
     }
 
     /// and  and file
@@ -429,43 +444,45 @@ pub const KnowledgeGraph = struct {
         const file = try std.fs.cwd().openFile(path, .{});
         defer file.close();
 
-        var reader = file.reader();
+        var read_buf: [4096]u8 = undefined;
+        var file_reader = file.reader(&read_buf);
+        const reader = &file_reader.interface;
         var result = Self.init();
 
         // Header
         var magic: [4]u8 = undefined;
-        _ = try reader.readAll(&magic);
+        try reader.readSliceAll(&magic);
         if (!std.mem.eql(u8, &magic, &FILE_MAGIC)) {
             return error.InvalidFileFormat;
         }
 
-        const version = try reader.readInt(u32, .little);
+        const version = try reader.takeInt(u32, .little);
         if (version != FILE_VERSION) {
             return error.UnsupportedVersion;
         }
 
-        const entity_count = try reader.readInt(u32, .little);
-        const relation_count = try reader.readInt(u32, .little);
+        const entity_count = try reader.takeInt(u32, .little);
+        const relation_count = try reader.takeInt(u32, .little);
 
         // withby buffer for and
         var name_offset: usize = 0;
 
         // Entities
         for (0..entity_count) |i| {
-            const name_len = try reader.readInt(u16, .little);
+            const name_len = try reader.takeInt(u16, .little);
 
             // and and in buffer
             const name_start = name_offset;
-            _ = try reader.readAll(name_buffer[name_offset .. name_offset + name_len]);
+            try reader.readSliceAll(name_buffer[name_offset .. name_offset + name_len]);
             name_offset += name_len;
 
-            const id = try reader.readInt(u32, .little);
-            const trit_len = try reader.readInt(u32, .little);
+            const id = try reader.takeInt(u32, .little);
+            const trit_len = try reader.takeInt(u32, .little);
             const packed_len = (trit_len + 4) / 5;
 
             var vec = PackedBigInt.zero();
             vec.trit_len = trit_len;
-            _ = try reader.readAll(vec.data[0..packed_len]);
+            try reader.readSliceAll(vec.data[0..packed_len]);
 
             result.entities[i] = Entity{
                 .name = name_buffer[name_start .. name_start + name_len],
@@ -477,19 +494,19 @@ pub const KnowledgeGraph = struct {
 
         // Relations
         for (0..relation_count) |i| {
-            const name_len = try reader.readInt(u16, .little);
+            const name_len = try reader.takeInt(u16, .little);
 
             const name_start = name_offset;
-            _ = try reader.readAll(name_buffer[name_offset .. name_offset + name_len]);
+            try reader.readSliceAll(name_buffer[name_offset .. name_offset + name_len]);
             name_offset += name_len;
 
-            const id = try reader.readInt(u32, .little);
-            const trit_len = try reader.readInt(u32, .little);
+            const id = try reader.takeInt(u32, .little);
+            const trit_len = try reader.takeInt(u32, .little);
             const packed_len = (trit_len + 4) / 5;
 
             var vec = PackedBigInt.zero();
             vec.trit_len = trit_len;
-            _ = try reader.readAll(vec.data[0..packed_len]);
+            try reader.readSliceAll(vec.data[0..packed_len]);
 
             result.relations[i] = Relation{
                 .name = name_buffer[name_start .. name_start + name_len],
@@ -500,17 +517,17 @@ pub const KnowledgeGraph = struct {
         }
 
         // Triples
-        const triple_count = try reader.readInt(u32, .little);
+        const triple_count = try reader.takeInt(u32, .little);
         for (0..triple_count) |i| {
-            const subject_id = try reader.readInt(u32, .little);
-            const predicate_id = try reader.readInt(u32, .little);
-            const object_id = try reader.readInt(u32, .little);
-            const trit_len = try reader.readInt(u32, .little);
+            const subject_id = try reader.takeInt(u32, .little);
+            const predicate_id = try reader.takeInt(u32, .little);
+            const object_id = try reader.takeInt(u32, .little);
+            const trit_len = try reader.takeInt(u32, .little);
             const packed_len = (trit_len + 4) / 5;
 
             var vec = PackedBigInt.zero();
             vec.trit_len = trit_len;
-            _ = try reader.readAll(vec.data[0..packed_len]);
+            try reader.readSliceAll(vec.data[0..packed_len]);
 
             result.triples[i] = Triple{
                 .subject_id = subject_id,
@@ -522,10 +539,10 @@ pub const KnowledgeGraph = struct {
         }
 
         // Graph vector
-        const graph_trit_len = try reader.readInt(u32, .little);
+        const graph_trit_len = try reader.takeInt(u32, .little);
         const graph_packed_len = (graph_trit_len + 4) / 5;
         result.graph_vector.trit_len = graph_trit_len;
-        _ = try reader.readAll(result.graph_vector.data[0..graph_packed_len]);
+        try reader.readSliceAll(result.graph_vector.data[0..graph_packed_len]);
 
         return result;
     }

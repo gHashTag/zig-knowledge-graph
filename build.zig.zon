@@ -1,9 +1,16 @@
-{
-  .name = zig_knowledge_graph,
-  .version = "0.1.0",
-  .dependencies = .{
-    .zig_golden_float = .{
-      .url = "https://github.com/gHashTag/zig-golden-float/archive/main.tar.gz",
+.{
+    // Was: a dependency declared by URL with no .hash, and no .fingerprint at
+    // all — so nothing could fetch it and nothing could depend on this package.
+    // There was also no build.zig, so there was nothing to run either.
+    .name = .zig_knowledge_graph,
+    .version = "0.1.0",
+    .fingerprint = 0x2a92e04f54905954,
+    .minimum_zig_version = "0.15.0",
+    .dependencies = .{
+        .zig_golden_float = .{
+            .url = "https://github.com/gHashTag/zig-golden-float/archive/e7ce32885de2a8c50b7b6a3030d0592202145dd1.tar.gz",
+            .hash = "golden_float-2.1.0-h7LKhUUNCwAtKVHQ56wjridCZVwXY7_oxT2hXD9xCDdF",
+        },
     },
-  },
+    .paths = .{ "build.zig", "build.zig.zon", "src", "README.md", "LICENSE" },
 }
