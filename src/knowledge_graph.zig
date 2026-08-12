@@ -371,7 +371,11 @@ pub const KnowledgeGraph = struct {
         const file = try std.fs.cwd().createFile(path, .{});
         defer file.close();
 
-        var writer = file.writer();
+        // Since 0.15 File.writer takes a buffer and returns a File.Writer;
+        // the thing with writeAll/writeInt on it is its .interface.
+        var write_buf: [4096]u8 = undefined;
+        var file_writer = file.writer(&write_buf);
+        const writer = &file_writer.interface;
 
         // Header
         try writer.writeAll(&FILE_MAGIC);
@@ -429,6 +433,10 @@ pub const KnowledgeGraph = struct {
         try writer.writeInt(u32, graph_trit_len, .little);
         const graph_packed_len = (self.graph_vector.trit_len + 4) / 5;
         try writer.writeAll(self.graph_vector.data[0..graph_packed_len]);
+
+        // The writer is buffered now. Without this the tail of the graph never
+        // reaches disk and load() fails on a file that save() reported writing.
+        try file_writer.interface.flush();
     }
 
     /// and  and file
@@ -436,7 +444,9 @@ pub const KnowledgeGraph = struct {
         const file = try std.fs.cwd().openFile(path, .{});
         defer file.close();
 
-        var reader = file.reader();
+        var read_buf: [4096]u8 = undefined;
+        var file_reader = file.reader(&read_buf);
+        const reader = &file_reader.interface;
         var result = Self.init();
 
         // Header
