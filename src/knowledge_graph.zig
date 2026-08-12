@@ -11,10 +11,17 @@
 // φ² + 1/φ² = 3
 
 const std = @import("std");
-const vsa = @import("vsa.zig");
-const hybrid = @import("hybrid.zig");
-const packed_vsa = @import("packed_vsa.zig");
-const packed_trit = @import("packed_trit.zig");
+// These four were flat relative imports of files that are not in this
+// repository. They are in gHashTag/zig-golden-float, whose own
+// src/vsa/packed_vsa.zig imported "knowledge_graph.zig" — a file that is not
+// in THAT repository, but is right here. One directory was split into two and
+// every relative import was left pointing at the sibling that stayed behind,
+// so neither half compiled. Pointed at the dependency instead.
+const golden = @import("zig_golden_float");
+const vsa = golden.vsa;
+const hybrid = golden.bigint;
+const packed_vsa = golden.packed_vsa;
+const packed_trit = golden.packed_trit;
 
 const HybridBigInt = hybrid.HybridBigInt;
 const PackedBigInt = packed_trit.PackedBigInt;
