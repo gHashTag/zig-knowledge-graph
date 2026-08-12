@@ -451,7 +451,7 @@ pub const KnowledgeGraph = struct {
 
         // Header
         var magic: [4]u8 = undefined;
-        _ = try reader.readAll(&magic);
+        try reader.readSliceAll(&magic);
         if (!std.mem.eql(u8, &magic, &FILE_MAGIC)) {
             return error.InvalidFileFormat;
         }
@@ -473,7 +473,7 @@ pub const KnowledgeGraph = struct {
 
             // and and in buffer
             const name_start = name_offset;
-            _ = try reader.readAll(name_buffer[name_offset .. name_offset + name_len]);
+            try reader.readSliceAll(name_buffer[name_offset .. name_offset + name_len]);
             name_offset += name_len;
 
             const id = try reader.readInt(u32, .little);
@@ -482,7 +482,7 @@ pub const KnowledgeGraph = struct {
 
             var vec = PackedBigInt.zero();
             vec.trit_len = trit_len;
-            _ = try reader.readAll(vec.data[0..packed_len]);
+            try reader.readSliceAll(vec.data[0..packed_len]);
 
             result.entities[i] = Entity{
                 .name = name_buffer[name_start .. name_start + name_len],
@@ -497,7 +497,7 @@ pub const KnowledgeGraph = struct {
             const name_len = try reader.readInt(u16, .little);
 
             const name_start = name_offset;
-            _ = try reader.readAll(name_buffer[name_offset .. name_offset + name_len]);
+            try reader.readSliceAll(name_buffer[name_offset .. name_offset + name_len]);
             name_offset += name_len;
 
             const id = try reader.readInt(u32, .little);
@@ -506,7 +506,7 @@ pub const KnowledgeGraph = struct {
 
             var vec = PackedBigInt.zero();
             vec.trit_len = trit_len;
-            _ = try reader.readAll(vec.data[0..packed_len]);
+            try reader.readSliceAll(vec.data[0..packed_len]);
 
             result.relations[i] = Relation{
                 .name = name_buffer[name_start .. name_start + name_len],
@@ -527,7 +527,7 @@ pub const KnowledgeGraph = struct {
 
             var vec = PackedBigInt.zero();
             vec.trit_len = trit_len;
-            _ = try reader.readAll(vec.data[0..packed_len]);
+            try reader.readSliceAll(vec.data[0..packed_len]);
 
             result.triples[i] = Triple{
                 .subject_id = subject_id,
@@ -542,7 +542,7 @@ pub const KnowledgeGraph = struct {
         const graph_trit_len = try reader.readInt(u32, .little);
         const graph_packed_len = (graph_trit_len + 4) / 5;
         result.graph_vector.trit_len = graph_trit_len;
-        _ = try reader.readAll(result.graph_vector.data[0..graph_packed_len]);
+        try reader.readSliceAll(result.graph_vector.data[0..graph_packed_len]);
 
         return result;
     }
